@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -24,7 +24,7 @@ namespace Drone_Win10_Logger
         {
             SerialDevice serial;
 
-            Queue<Data> queue = new Queue<Data>();
+            ConcurrentQueue<Data> queue = new ConcurrentQueue<Data>();
 
             if (File.Exists("log.txt"))
                 File.Delete("log.txt");
@@ -40,10 +40,12 @@ namespace Drone_Win10_Logger
                 {
                     while (queue.Count > 0 && sb.Length < 900000)
                     {
-                        Data d = queue.Dequeue();
-
-                        sb.AppendFormat("{0};{1};{2};{3};{4}\r\n", d.Roll / 65536.0, d.Pitch / 65536.0, d.Yaw / 65536.0, d.Throttle, c * 5);
-                        c++;
+                        Data d;
+                        if (queue.TryDequeue(out d))
+                        {
+                            sb.AppendFormat("{0};{1};{2};{3};{4}\r\n", d.Roll / 65536.0, d.Pitch / 65536.0, d.Yaw / 65536.0, d.Throttle, c * 5);
+                            c++;
+                        }
                     }
 
                     File.AppendAllText("log.txt", sb.ToString());
