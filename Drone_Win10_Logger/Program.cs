@@ -112,26 +112,34 @@ namespace Drone_Win10_Logger
 
             Task.Run(async () =>
             {
-                Console.WriteLine("Connected to COM4");
-                var selector = SerialDevice.GetDeviceSelector("COM4");
+                Console.WriteLine("Connected to COM3");
+                var selector = SerialDevice.GetDeviceSelector("COM3");
                 var devices = await DeviceInformation.FindAllAsync(selector);
 
                 if (devices.Count > 0)
                 {
                     var id = devices.First().Id;
                     serial = await SerialDevice.FromIdAsync(id);
-                    serial.BaudRate = 1500000;
+                    serial.BaudRate = 2000000;
                     serial.StopBits = SerialStopBitCount.One;
                     serial.DataBits = 8;
                     serial.Parity = SerialParity.None;
                     serial.Handshake = SerialHandshake.None;
 
                     DataReader dr = new DataReader(serial.InputStream);
+                    dr.ByteOrder = ByteOrder.BigEndian;
+
+                    do
+                    {
+                        await dr.LoadAsync(1);
+                    } while (dr.ReadByte() != 0x33);
 
                     // load which data will be sent
                     await dr.LoadAsync(2);
                     UInt16 logOptions =  dr.ReadUInt16();
                     uint logLength = 0;
+
+                    Console.WriteLine("Options read {0}", logOptions);
 
                     int pos = 0;
 
@@ -210,10 +218,15 @@ namespace Drone_Win10_Logger
                     roll = pitch = yaw = 0;
                     int throttle = 0;
                     double gDiv = Math.Pow(2, 15) / 2000; // +- 2000 deg/s FSR
-                    double aDiv = Math.Pow(2, 15) / 2; // +- 2 g FSR
+                    double aDiv = Math.Pow(2, 15) / 16; // +- 16 g FSR
 
                     while (true)
                     {
+                        do
+                        {
+                            await dr.LoadAsync(1);
+                        } while (dr.ReadByte() != 0x33);
+
                         await dr.LoadAsync(logLength + 1);
 
                         byte[] tmp = new byte[logLength + 1];
@@ -231,66 +244,105 @@ namespace Drone_Win10_Logger
                             int parsePos = 0;
 
                             if (logEnabled[0]) {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
                                 accelX = BitConverter.ToInt16(tmp, parsePos);
                                 accelX /= aDiv;
 
                                 parsePos += 2;
                             }
                             if (logEnabled[1]) {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
                                 accelY = BitConverter.ToInt16(tmp, parsePos);
                                 accelY /= aDiv;
 
                                 parsePos += 2;
                             }
                             if (logEnabled[2]) {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
                                 accelZ = BitConverter.ToInt16(tmp, parsePos);
                                 accelZ /= aDiv;
 
                                 parsePos += 2;
                             }
                             if (logEnabled[3]) {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
                                 gyroX = BitConverter.ToInt16(tmp, parsePos);
                                 gyroX /= gDiv;
 
                                 parsePos += 2;
                             }
                             if (logEnabled[4]) {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
                                 gyroY = BitConverter.ToInt16(tmp, parsePos);
                                 gyroY /= gDiv;
 
                                 parsePos += 2;
                             }
                             if (logEnabled[5]) {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
                                 gyroZ = BitConverter.ToInt16(tmp, parsePos);
                                 gyroZ /= gDiv;
 
                                 parsePos += 2;
                             }
                             if (logEnabled[6]) {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
                                 temperature = BitConverter.ToInt16(tmp, parsePos);
                                 temperature = temperature / 340 + 36.53;
 
                                 parsePos += 2;
                             }
                             if (logEnabled[7]) {
-                                roll = BitConverter.ToInt32(tmp, parsePos);
-                                roll /= 65536;
+                                byte swap = tmp[parsePos + 3];
+                                tmp[parsePos + 3] = tmp[parsePos];
+                                tmp[parsePos] = swap;
+                                swap = tmp[parsePos + 2];
+                                tmp[parsePos + 2] = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = swap;
+                                roll = BitConverter.ToSingle(tmp, parsePos);
 
                                 parsePos += 4;
                             }
                             if (logEnabled[8]) {
-                                pitch = BitConverter.ToInt32(tmp, parsePos);
-                                pitch /= 65536;
+                                byte swap = tmp[parsePos + 3];
+                                tmp[parsePos + 3] = tmp[parsePos];
+                                tmp[parsePos] = swap;
+                                swap = tmp[parsePos + 2];
+                                tmp[parsePos + 2] = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = swap;
+                                pitch = BitConverter.ToSingle(tmp, parsePos);
 
                                 parsePos += 4;
                             }
                             if (logEnabled[9]) {
-                                yaw = BitConverter.ToInt32(tmp, parsePos);
-                                yaw /= 65536;
+                                byte swap = tmp[parsePos + 3];
+                                tmp[parsePos + 3] = tmp[parsePos];
+                                tmp[parsePos] = swap;
+                                swap = tmp[parsePos + 2];
+                                tmp[parsePos + 2] = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = swap;
+                                yaw = BitConverter.ToSingle(tmp, parsePos);
 
                                 parsePos += 4;
                             }
                             if (logEnabled[10]) {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
                                 throttle = BitConverter.ToUInt16(tmp, parsePos);
 
                                 if (throttle != 0)
