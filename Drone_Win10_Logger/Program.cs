@@ -112,9 +112,14 @@ namespace Drone_Win10_Logger
 
             Task.Run(async () =>
             {
-                Console.WriteLine("Connected to COM3");
-                var selector = SerialDevice.GetDeviceSelector("COM3");
+                string selector = SerialDevice.GetDeviceSelectorFromUsbVidPid(0x0483, 0x3748);
                 var devices = await DeviceInformation.FindAllAsync(selector);
+
+                if (devices.Count == 0)
+                {
+                    selector = SerialDevice.GetDeviceSelectorFromUsbVidPid(0x0483, 0x374B);
+                    devices = await DeviceInformation.FindAllAsync(selector);
+                }
 
                 if (devices.Count > 0)
                 {
@@ -125,6 +130,8 @@ namespace Drone_Win10_Logger
                     serial.DataBits = 8;
                     serial.Parity = SerialParity.None;
                     serial.Handshake = SerialHandshake.None;
+
+                    Console.WriteLine(String.Format("Connected to {0}: {1}", serial.PortName, devices.First().Name));
 
                     DataReader dr = new DataReader(serial.InputStream);
                     dr.ByteOrder = ByteOrder.BigEndian;
