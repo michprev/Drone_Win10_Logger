@@ -23,6 +23,7 @@ namespace Drone_Win10_Logger
         public double Pitch { get; set; }
         public double Yaw { get; set; }
         public int Throttle { get; set; }
+        public int DeltaT { get; set; }
     }
 
     class Program
@@ -43,6 +44,7 @@ namespace Drone_Win10_Logger
                 sb.Capacity = 1000001;
 
                 int c = 0;
+                double time = 0;
 
                 while (true)
                 {
@@ -96,7 +98,9 @@ namespace Drone_Win10_Logger
                                 sb.Append(d.Throttle).Append(';');
                             }
 
-                            sb.Append(c).Append("\r\n");
+                            time += d.DeltaT / 1000.0;
+
+                            sb.Append(time).Append("\r\n");
 
                             c++;
                         }
@@ -211,6 +215,9 @@ namespace Drone_Win10_Logger
                         logLength += 2;
                     }
 
+                    // time delta
+                    logLength += 2;
+
                     headerBuilder.Append("Time\r\n");
 
                     if (File.Exists(fileName))
@@ -224,6 +231,7 @@ namespace Drone_Win10_Logger
                     double roll, pitch, yaw;
                     roll = pitch = yaw = 0;
                     int throttle = 0;
+                    int deltaT = 0;
                     double gDiv = Math.Pow(2, 15) / 2000; // +- 2000 deg/s FSR
                     double aDiv = Math.Pow(2, 15) / 16; // +- 16 g FSR
 
@@ -358,7 +366,14 @@ namespace Drone_Win10_Logger
                                 parsePos += 2;
                             }
 
-                            queue.Enqueue(new Data() { AccelX = accelX, AccelY = accelY, AccelZ = accelZ, GyroX = gyroX, GyroY = gyroY, GyroZ = gyroZ, Temperature = temperature, Roll = roll, Pitch = pitch, Yaw = yaw, Throttle = throttle });
+                            byte tmpSwap = tmp[parsePos + 1];
+                            tmp[parsePos + 1] = tmp[parsePos];
+                            tmp[parsePos] = tmpSwap;
+                            deltaT = BitConverter.ToUInt16(tmp, parsePos);
+
+                            parsePos += 2;
+
+                            queue.Enqueue(new Data() { AccelX = accelX, AccelY = accelY, AccelZ = accelZ, GyroX = gyroX, GyroY = gyroY, GyroZ = gyroZ, Temperature = temperature, Roll = roll, Pitch = pitch, Yaw = yaw, Throttle = throttle, DeltaT = deltaT });
                         }
                         else {
                             Console.WriteLine("CRC error; their {0}, our {1}", crc, localCrc);
