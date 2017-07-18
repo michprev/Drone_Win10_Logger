@@ -154,7 +154,7 @@ namespace Drone_Win10_Logger
 
                     int pos = 0;
 
-                    for (int i = 0x400; i > 0; i /= 2)
+                    for (int i = 0x8000; i > 0; i /= 2)
                     {
                         if ((logOptions & i) != 0)
                         {
