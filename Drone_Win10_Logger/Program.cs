@@ -24,6 +24,10 @@ namespace Drone_Win10_Logger
         public double Yaw { get; set; }
         public int Throttle { get; set; }
         public int DeltaT { get; set; }
+        public int Motor_FL { get; set; }
+        public int Motor_FR { get; set; }
+        public int Motor_BL { get; set; }
+        public int Motor_BR { get; set; }
     }
 
     class Program
@@ -35,7 +39,7 @@ namespace Drone_Win10_Logger
 
             DateTime now = DateTime.Now;
             string fileName = String.Format("log-{0}-{1}-{2}_{3}-{4}-{5}.csv", now.Day, now.Month, now.Year, now.Hour, now.Minute, now.Second);
-            bool[] logEnabled = new bool[11];
+            bool[] logEnabled = new bool[16];
 
 
             Task.Run(() =>
@@ -96,6 +100,22 @@ namespace Drone_Win10_Logger
                             if (logEnabled[10])
                             {
                                 sb.Append(d.Throttle).Append(';');
+                            }
+                            if (logEnabled[11])
+                            {
+                                sb.Append(d.Motor_FL).Append(';');
+                            }
+                            if (logEnabled[12])
+                            {
+                                sb.Append(d.Motor_FR).Append(';');
+                            }
+                            if (logEnabled[13])
+                            {
+                                sb.Append(d.Motor_BL).Append(';');
+                            }
+                            if (logEnabled[14])
+                            {
+                                sb.Append(d.Motor_BR).Append(';');
                             }
 
                             time += d.DeltaT / 1000.0;
@@ -214,6 +234,26 @@ namespace Drone_Win10_Logger
                         headerBuilder.Append("Throttle;");
                         logLength += 2;
                     }
+                    if (logEnabled[11])
+                    {
+                        headerBuilder.Append("FL;");
+                        logLength += 2;
+                    }
+                    if (logEnabled[12])
+                    {
+                        headerBuilder.Append("FR;");
+                        logLength += 2;
+                    }
+                    if (logEnabled[13])
+                    {
+                        headerBuilder.Append("BL;");
+                        logLength += 2;
+                    }
+                    if (logEnabled[14])
+                    {
+                        headerBuilder.Append("BR;");
+                        logLength += 2;
+                    }
 
                     // time delta
                     logLength += 2;
@@ -231,6 +271,8 @@ namespace Drone_Win10_Logger
                     double roll, pitch, yaw;
                     roll = pitch = yaw = 0;
                     int throttle = 0;
+                    int motor_FL, motor_FR, motor_BL, motor_BR;
+                    motor_FL = motor_FR = motor_BL = motor_BR = 0;
                     int deltaT = 0;
                     double gDiv = Math.Pow(2, 15) / 2000; // +- 2000 deg/s FSR
                     double aDiv = Math.Pow(2, 15) / 16; // +- 16 g FSR
@@ -365,6 +407,62 @@ namespace Drone_Win10_Logger
 
                                 parsePos += 2;
                             }
+                            if (logEnabled[11])
+                            {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
+                                motor_FL = BitConverter.ToUInt16(tmp, parsePos);
+
+                                if (motor_FL == 940)
+                                    motor_FL = 0;
+                                else
+                                    motor_FL -= throttle + 1000;
+
+                                parsePos += 2;
+                            }
+                            if (logEnabled[12])
+                            {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
+                                motor_FR = BitConverter.ToUInt16(tmp, parsePos);
+
+                                if (motor_FR == 940)
+                                    motor_FR = 0;
+                                else
+                                    motor_FR -= throttle + 1000;
+
+                                parsePos += 2;
+                            }
+                            if (logEnabled[13])
+                            {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
+                                motor_BL = BitConverter.ToUInt16(tmp, parsePos);
+
+                                if (motor_BL == 940)
+                                    motor_BL = 0;
+                                else
+                                    motor_BL -= throttle + 1000;
+
+                                parsePos += 2;
+                            }
+                            if (logEnabled[14])
+                            {
+                                byte swap = tmp[parsePos + 1];
+                                tmp[parsePos + 1] = tmp[parsePos];
+                                tmp[parsePos] = swap;
+                                motor_BR = BitConverter.ToUInt16(tmp, parsePos);
+
+                                if (motor_BR == 940)
+                                    motor_BR = 0;
+                                else
+                                    motor_BR -= throttle + 1000;
+
+                                parsePos += 2;
+                            }
 
                             byte tmpSwap = tmp[parsePos + 1];
                             tmp[parsePos + 1] = tmp[parsePos];
@@ -373,7 +471,10 @@ namespace Drone_Win10_Logger
 
                             parsePos += 2;
 
-                            queue.Enqueue(new Data() { AccelX = accelX, AccelY = accelY, AccelZ = accelZ, GyroX = gyroX, GyroY = gyroY, GyroZ = gyroZ, Temperature = temperature, Roll = roll, Pitch = pitch, Yaw = yaw, Throttle = throttle, DeltaT = deltaT });
+                            queue.Enqueue(new Data() { AccelX = accelX, AccelY = accelY, AccelZ = accelZ,
+                                GyroX = gyroX, GyroY = gyroY, GyroZ = gyroZ, Temperature = temperature,
+                                Roll = roll, Pitch = pitch, Yaw = yaw, Throttle = throttle,
+                                Motor_FL = motor_FL, Motor_FR = motor_FR, Motor_BL = motor_BL, Motor_BR = motor_BR, DeltaT = deltaT });
                         }
                         else {
                             Console.WriteLine("CRC error; their {0}, our {1}", crc, localCrc);
